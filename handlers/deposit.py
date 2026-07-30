@@ -92,3 +92,200 @@ async def get_usd(message: Message, state: FSMContext):
         "✅ Amount received.\n\n"
         "Now send your Transaction ID (TXID)."
     )
+    from config import (
+    ADMIN_ID,
+    BINANCE_ID,
+    BYBIT_UID,
+)
+from database import connect
+
+
+@router.message(DepositState.txid)
+async def get_txid(message: Message, state: FSMContext):
+
+    txid = message.text.strip()
+
+    data = await state.get_data()
+
+    method = data["method"]
+    usd = data["usd"]
+
+    async with await connect() as db:
+
+        cursor = await db.execute(
+            "SELECT id FROM deposits WHERE txid=?",
+            (txid,)
+        )
+
+        if await cursor.fetchone():
+            await message.answer(
+                "❌ This TXID already exists."
+            )
+            return
+
+        await db.execute(
+            """
+            INSERT INTO deposits(
+                user_id,
+                method,
+                usd,
+                bdt,
+                txid,
+                status
+            )
+            VALUES(?,?,?,?,?,?)
+            """,
+            (
+                message.from_user.id,
+                method,
+                usd,
+                0,
+                txid,
+                "Pending"
+            )
+        )
+
+        await db.commit()
+
+    payment_info = ""
+
+    if method == "Binance":
+        payment_info = f"🟡 Binance ID: <code>{BINANCE_ID}</code>"
+
+    elif method == "Bybit":
+        payment_info = f"⚫ Bybit UID: <code>{BYBIT_UID}</code>"
+
+    await message.answer(
+        "✅ Deposit request submitted.\n\n"
+        f"{payment_info}\n\n"
+        "Your request is waiting for admin approval.",
+        parse_mode="HTML"
+    )
+
+    await message.bot.send_message(
+        ADMIN_ID,
+        f"""
+💰 New Deposit
+
+User: {message.from_user.id}
+
+Method: {method}
+
+Amount: ${usd}
+
+TXID:
+{txid}
+"""
+    )
+
+    await state.clear()
+    
+from aiogram.filters import Command
+
+
+@router.message(Command("approve"))
+async def approve_deposit(message: Message):
+
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    args = message.text.split()
+
+    if len(args) != 2:
+        await message.answer("Usage:\n/approve deposit_id")
+        return
+
+    deposit_id = args[1]
+
+    async with await connect() as db:
+
+        cursor = await db.execute(
+            """
+            SELECT id,user_id,usd,status
+            FROM deposits
+            WHERE id=?
+            """,
+            (deposit_id,)
+        )
+
+        deposit = await cursor.fetchone()
+
+        if not deposit:
+            await message.answer("Deposit not found.")
+            return
+
+        if deposit[3] == "Approved":
+            await message.answer("Already approved.")
+            return
+
+        await db.execute(
+            """
+            UPDATE deposits
+            SET status='Approved'
+            WHERE id=?
+            """,
+            (deposit_id,)
+        )
+
+        await db.execute(
+            """
+            UPDATE users
+            SET balance = balance + ?
+            WHERE user_id=?
+            """,
+            (
+                deposit[2],
+                deposit[1]
+            )
+        )
+
+        await db.commit()
+
+    await message.answer("✅ Deposit Approved")
+
+    await message.bot.send_message(
+        deposit[1],
+        f"✅ Your deposit of ${deposit[2]} has been approved."
+    )
+
+
+@router.message(Command("history"))
+async def deposit_history(message: Message):
+
+    async with await connect() as db:
+
+        cursor = await db.execute(
+            """
+            SELECT
+            method,
+            usd,
+            status,
+            created_at
+            FROM deposits
+            WHERE user_id=?
+            ORDER BY id DESC
+            LIMIT 10
+            """,
+            (message.from_user.id,)
+        )
+
+        rows = await cursor.fetchall()
+
+    if not rows:
+        await message.answer("No deposit history found.")
+        return
+
+    text = "📜 <b>Deposit History</b>\n\n"
+
+    for method, usd, status, created in rows:
+        text += (
+            f"💳 {method}\n"
+            f"💰 ${usd}\n"
+            f"📌 {status}\n"
+            f"🗓 {created}\n\n"
+        )
+
+    await message.answer(
+        text,
+        parse_mode="HTML"
+    )
