@@ -131,3 +131,49 @@ async def get_stock_count(product_id):
         """, (product_id,))
         row = await cursor.fetchone()
         return row[0]
+async def update_balance(user_id, amount):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute(
+            "UPDATE users SET balance = balance + ? WHERE user_id=?",
+            (amount, user_id)
+        )
+        await db.commit()
+
+
+async def get_available_stock(product_id):
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute("""
+            SELECT id, account
+            FROM stock
+            WHERE product_id=? AND sold=0
+            LIMIT 1
+        """, (product_id,))
+        return await cursor.fetchone()
+
+
+async def mark_stock_sold(stock_id):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute(
+            "UPDATE stock SET sold=1 WHERE id=?",
+            (stock_id,)
+        )
+        await db.commit()
+
+
+async def add_purchase(user_id, product_id, account, price):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("""
+            INSERT INTO purchases(
+                user_id,
+                product_id,
+                account,
+                price
+            )
+            VALUES(?,?,?,?)
+        """, (
+            user_id,
+            product_id,
+            account,
+            price
+        ))
+        await db.commit()
