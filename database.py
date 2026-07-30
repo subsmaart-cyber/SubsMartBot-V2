@@ -76,12 +76,17 @@ async def init_db():
         await db.commit()
 
 
+# ================= USERS =================
+
 async def add_user(user_id, username, full_name):
     async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute("""
-        INSERT OR IGNORE INTO users(user_id, username, full_name)
-        VALUES (?, ?, ?)
-        """, (user_id, username, full_name))
+        await db.execute(
+            """
+            INSERT OR IGNORE INTO users(user_id, username, full_name)
+            VALUES(?,?,?)
+            """,
+            (user_id, username, full_name)
+        )
         await db.commit()
 
 
@@ -102,7 +107,79 @@ async def get_balance(user_id):
         )
         row = await cursor.fetchone()
         return row[0] if row else 0
-        async def get_products():
+
+
+async def update_balance(user_id, amount):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute(
+            """
+            UPDATE users
+            SET balance = balance + ?
+            WHERE user_id=?
+            """,
+            (amount, user_id)
+        )
+        await db.commit()
+
+
+# ================= REFERRAL =================
+
+async def has_referrer(user_id):
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute(
+            """
+            SELECT referred_by
+            FROM users
+            WHERE user_id=?
+            """,
+            (user_id,)
+        )
+        row = await cursor.fetchone()
+
+        if row and row[0]:
+            return True
+        return False
+
+
+async def set_referrer(user_id, referrer_id):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute(
+            """
+            UPDATE users
+            SET referred_by=?
+            WHERE user_id=?
+            """,
+            (referrer_id, user_id)
+        )
+
+        await db.execute(
+            """
+            UPDATE users
+            SET referrals = referrals + 1
+            WHERE user_id=?
+            """,
+            (referrer_id,)
+        )
+
+        await db.commit()
+
+
+async def get_referrals(user_id):
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute(
+            """
+            SELECT referrals
+            FROM users
+            WHERE user_id=?
+            """,
+            (user_id,)
+        )
+        row = await cursor.fetchone()
+        return row[0] if row else 0
+
+# ================= PRODUCTS =================
+
+async def get_products():
     async with aiosqlite.connect(DB_NAME) as db:
         cursor = await db.execute("""
             SELECT id, name, price
@@ -122,6 +199,27 @@ async def get_product(product_id):
         return await cursor.fetchone()
 
 
+async def add_product(name, price, description):
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute("""
+            INSERT INTO products(name, price, description)
+            VALUES(?,?,?)
+        """, (name, price, description))
+        await db.commit()
+        return cursor.lastrowid
+
+
+# ================= STOCK =================
+
+async def add_stock(product_id, account):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("""
+            INSERT INTO stock(product_id, account)
+            VALUES(?,?)
+        """, (product_id, account))
+        await db.commit()
+
+
 async def get_stock_count(product_id):
     async with aiosqlite.connect(DB_NAME) as db:
         cursor = await db.execute("""
@@ -131,13 +229,6 @@ async def get_stock_count(product_id):
         """, (product_id,))
         row = await cursor.fetchone()
         return row[0]
-async def update_balance(user_id, amount):
-    async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute(
-            "UPDATE users SET balance = balance + ? WHERE user_id=?",
-            (amount, user_id)
-        )
-        await db.commit()
 
 
 async def get_available_stock(product_id):
@@ -160,6 +251,8 @@ async def mark_stock_sold(stock_id):
         await db.commit()
 
 
+# ================= PURCHASE =================
+
 async def add_purchase(user_id, product_id, account, price):
     async with aiosqlite.connect(DB_NAME) as db:
         await db.execute("""
@@ -177,30 +270,77 @@ async def add_purchase(user_id, product_id, account, price):
             price
         ))
         await db.commit()
-        async def add_product(name, price, description):
+
+
+# ================= DEPOSIT =================
+
+async def txid_exists(txid):
     async with aiosqlite.connect(DB_NAME) as db:
         cursor = await db.execute(
-            """
-            INSERT INTO products(name, price, description)
-            VALUES(?,?,?)
-            """,
-            (name, price, description)
+            "SELECT id FROM deposits WHERE txid=?",
+            (txid,)
         )
-        await db.commit()
-        return cursor.lastrowid
+        return await cursor.fetchone()
 
 
-async def add_stock(product_id, account):
+async def add_deposit(user_id, method, usd, bdt, txid):
     async with aiosqlite.connect(DB_NAME) as db:
-        await db.execute(
-            """
-            INSERT INTO stock(product_id, account)
-            VALUES(?,?)
-            """,
-            (product_id, account)
-        )
+        await db.execute("""
+            INSERT INTO deposits(
+                user_id,
+                method,
+                usd,
+                bdt,
+                txid
+            )
+            VALUES(?,?,?,?,?)
+        """, (
+            user_id,
+            method,
+            usd,
+            bdt,
+            txid
+        ))
         await db.commit()
 
+
+async def get_user_deposits(user_id):
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute("""
+            SELECT method, usd, status, created_at
+            FROM deposits
+            WHERE user_id=?
+            ORDER BY id DESC
+        """, (user_id,))
+        return await cursor.fetchall()
+
+
+# ================= REVIEWS =================
+
+async def add_review(user_id, review):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute("""
+            INSERT INTO reviews(user_id, review)
+            VALUES(?,?)
+        """, (
+            user_id,
+            review
+        ))
+        await db.commit()
+
+
+async def get_reviews(limit=10):
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute("""
+            SELECT review
+            FROM reviews
+            ORDER BY id DESC
+            LIMIT ?
+        """, (limit,))
+        return await cursor.fetchall()
+
+
+# ================= STATS =================
 
 async def total_users():
     async with aiosqlite.connect(DB_NAME) as db:
