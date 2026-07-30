@@ -102,3 +102,32 @@ async def get_balance(user_id):
         )
         row = await cursor.fetchone()
         return row[0] if row else 0
+        async def get_products():
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute("""
+            SELECT id, name, price
+            FROM products
+            ORDER BY id ASC
+        """)
+        return await cursor.fetchall()
+
+
+async def get_product(product_id):
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute("""
+            SELECT id, name, price, description
+            FROM products
+            WHERE id=?
+        """, (product_id,))
+        return await cursor.fetchone()
+
+
+async def get_stock_count(product_id):
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute("""
+            SELECT COUNT(*)
+            FROM stock
+            WHERE product_id=? AND sold=0
+        """, (product_id,))
+        row = await cursor.fetchone()
+        return row[0]
