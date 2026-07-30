@@ -1,10 +1,11 @@
 import asyncio
+import os
 
 from aiogram import Bot, Dispatcher
 from dotenv import load_dotenv
-import os
 
 from database import init_db
+from handlers import register_handlers
 
 load_dotenv()
 
@@ -14,6 +15,7 @@ dp = Dispatcher()
 
 async def main():
     await init_db()
+    register_handlers(dp)
     await dp.start_polling(bot)
 
 
