@@ -17,10 +17,7 @@ async def reviews(message: Message):
 
     text = "⭐ <b>Customer Reviews</b>\n\n"
 
-    for name, review in reviews:
-        text += f"👤 <b>{name}</b>\n💬 {review}\n\n"
+    for review in reviews:
+        text += f"💬 {review[0]}\n\n"
 
-    await message.answer(
-        text,
-        parse_mode="HTML"
-    )
+    await message.answer(text, parse_mode="HTML")
