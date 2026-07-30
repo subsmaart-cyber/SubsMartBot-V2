@@ -177,3 +177,50 @@ async def add_purchase(user_id, product_id, account, price):
             price
         ))
         await db.commit()
+        async def add_product(name, price, description):
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute(
+            """
+            INSERT INTO products(name, price, description)
+            VALUES(?,?,?)
+            """,
+            (name, price, description)
+        )
+        await db.commit()
+        return cursor.lastrowid
+
+
+async def add_stock(product_id, account):
+    async with aiosqlite.connect(DB_NAME) as db:
+        await db.execute(
+            """
+            INSERT INTO stock(product_id, account)
+            VALUES(?,?)
+            """,
+            (product_id, account)
+        )
+        await db.commit()
+
+
+async def total_users():
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute("SELECT COUNT(*) FROM users")
+        return (await cursor.fetchone())[0]
+
+
+async def total_products():
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute("SELECT COUNT(*) FROM products")
+        return (await cursor.fetchone())[0]
+
+
+async def total_deposits():
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute("SELECT COUNT(*) FROM deposits")
+        return (await cursor.fetchone())[0]
+
+
+async def total_purchases():
+    async with aiosqlite.connect(DB_NAME) as db:
+        cursor = await db.execute("SELECT COUNT(*) FROM purchases")
+        return (await cursor.fetchone())[0]
