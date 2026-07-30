@@ -91,7 +91,7 @@ async def product_price(message: Message, state: FSMContext):
 
     try:
         price = float(message.text)
-    except:
+    except ValueError:
         await message.answer("Invalid Price")
         return
 
@@ -100,7 +100,6 @@ async def product_price(message: Message, state: FSMContext):
     await state.set_state(AddProductState.description)
 
     await message.answer("Send Product Description")
-
 
 @router.message(AddProductState.description)
 async def product_description(message: Message, state: FSMContext):
@@ -117,16 +116,17 @@ async def product_description(message: Message, state: FSMContext):
 
     await message.answer(
         f"✅ Product Added\n\nProduct ID: {product_id}"
-        @router.message(Command("addstock"))
+    )
+
+
+@router.message(Command("addstock"))
 async def add_stock_start(message: Message, state: FSMContext):
 
     if not is_admin(message.from_user.id):
         return
 
     await state.set_state(AddStockState.product_id)
-    await message.answer(
-        "📦 Send Product ID"
-    )
+    await message.answer("📦 Send Product ID")
 
 
 @router.message(AddStockState.product_id)
@@ -155,7 +155,6 @@ async def stock_product_id(message: Message, state: FSMContext):
 async def stock_accounts(message: Message, state: FSMContext):
 
     data = await state.get_data()
-
     product_id = data["product_id"]
 
     accounts = [
@@ -173,12 +172,10 @@ async def stock_accounts(message: Message, state: FSMContext):
     await state.clear()
 
     await message.answer(
-        f"""
-✅ Stock Added Successfully
+        f"""✅ Stock Added Successfully
 
 📦 Product ID: {product_id}
 
 ➕ Added: {added}
 """
-    )
     )
