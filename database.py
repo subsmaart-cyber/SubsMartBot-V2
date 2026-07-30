@@ -364,7 +364,9 @@ async def total_purchases():
     async with aiosqlite.connect(DB_NAME) as db:
         cursor = await db.execute("SELECT COUNT(*) FROM purchases")
         return (await cursor.fetchone())[0]
-        async def reward_referrer(referrer_id, amount):
+
+
+async def reward_referrer(referrer_id, amount):
     async with aiosqlite.connect(DB_NAME) as db:
         await db.execute(
             """
