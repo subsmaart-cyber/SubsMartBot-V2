@@ -1,20 +1,19 @@
-from aiogram import Bot, Dispatcher
-from aiogram.enums import ParseMode
-from aiogram.client.default import DefaultBotProperties
 import asyncio
 
-from config import BOT_TOKEN
+from aiogram import Bot, Dispatcher
+from dotenv import load_dotenv
+import os
 
-bot = Bot(
-    token=BOT_TOKEN,
-    default=DefaultBotProperties(parse_mode=ParseMode.HTML)
-)
+from database import init_db
 
+load_dotenv()
+
+bot = Bot(os.getenv("BOT_TOKEN"))
 dp = Dispatcher()
 
 
 async def main():
-    print("✅ SubsMart Bot V2 Started")
+    await init_db()
     await dp.start_polling(bot)
 
 
