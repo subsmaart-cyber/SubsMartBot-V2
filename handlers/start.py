@@ -2,6 +2,8 @@ from aiogram import Router
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 
+from keyboards.main_menu import main_menu
+
 router = Router()
 
 
@@ -9,5 +11,6 @@ router = Router()
 async def start(message: Message):
     await message.answer(
         "👋 Welcome to Subs Mart!\n\n"
-        "Use the menu below to explore the shop."
+        "Use the menu below to explore the shop.",
+        reply_markup=main_menu()
     )
