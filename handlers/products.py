@@ -1,9 +1,15 @@
 from aiogram import Router
 from aiogram.types import Message
-from aiogram.filters import Command
 
 router = Router()
 
-@router.message(Command("products"))
+
+@router.message(lambda message: message.text == "🛒 Products")
 async def products(message: Message):
-    await message.answer("🛒 Products")
+    text = (
+        "🛒 <b>Products</b>\n\n"
+        "No products available right now.\n\n"
+        "Please check again later."
+    )
+
+    await message.answer(text, parse_mode="HTML")
