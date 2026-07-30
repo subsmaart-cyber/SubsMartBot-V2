@@ -57,20 +57,27 @@ async def buy_product(callback: CallbackQuery):
 
     await callback.message.answer(
         f"""
-✅ Purchase Successful
+✅ <b>Purchase Successful</b>
 
-📦 Product:
+📦 <b>Product:</b>
 {product[1]}
 
-💰 Paid:
+💰 <b>Paid:</b>
 ${price:.2f}
 
 ━━━━━━━━━━━━━━
 
-🔑 Your Account:
+🔑 <b>Your Account:</b>
 
 <code>{stock[1]}</code>
 
 ━━━━━━━━━━━━━━
 
-⚠️ Save this account now
+⚠️ <b>Important:</b>
+Save this account now.
+Do not share it with anyone.
+""",
+        parse_mode="HTML"
+    )
+
+    await callback.answer("✅ Purchase completed!")
